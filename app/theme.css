@@ -1,0 +1,13 @@
+/* app/theme.css — Tailwind v4 tokens */
+@theme {
+  /* Presence palette */
+  --color-presence-dark: #0b0f1a;
+  --color-presence-mid:  #141a27;
+  --color-presence-light:#e5e7eb;
+  --color-presence-accent:#b91c1c;  /* primary red */
+  --color-presence-accent2:#7f1d1d; /* deeper red */
+
+  /* standard semantic helpers if you want to use them */
+  --color-presence-red:   #ef4444;
+  --color-presence-green: #22c55e;
+}
