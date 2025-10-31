@@ -5,21 +5,21 @@ import { Firestore } from "@google-cloud/firestore";
 
 export async function GET() {
   try {
-    console.log("🧩 Test Firestore route invoked (using ExternalAccountClient)");
+    console.log("🧩 Firestore WIF Test Route Invoked");
     console.log("🔍 GOOGLE_PROJECT_ID:", process.env.GOOGLE_PROJECT_ID);
     console.log("🔍 OIDC token present:", !!process.env.VERCEL_OIDC_TOKEN);
 
-    // STEP 1: Supplier for Vercel OIDC token
+    // STEP 1: Define the subject token supplier (Vercel OIDC)
     const vercelOidcTokenSupplier = async () => {
       const token = process.env.VERCEL_OIDC_TOKEN;
-      if (!token) throw new Error("VERCEL_OIDC_TOKEN not found in environment.");
+      if (!token) throw new Error("VERCEL_OIDC_TOKEN environment variable is missing.");
       return token;
     };
 
-    // STEP 2: Base JSON config (compatible with fromJSON)
+    // STEP 2: Define ExternalAccountClient configuration
     const externalAccountClientOptions = {
       type: "external_account",
-      client_id: "vercel-provider",
+      client_id: "vercel-provider", // your provider ID
       audience:
         "//iam.googleapis.com/projects/111425640751/locations/global/workloadIdentityPools/vercel-pool/providers/vercel-provider",
       subject_token_type: "urn:ietf:params:oauth:token-type:jwt",
@@ -27,26 +27,20 @@ export async function GET() {
       service_account_impersonation_url:
         "https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/firebase-adminsdk-fbsvc@presencehq-sandbox.iam.gserviceaccount.com:generateAccessToken",
       credential_source: {
-        // placeholder – we’ll replace this dynamically
-        file: "/dev/null",
+        subject_token_supplier: vercelOidcTokenSupplier,
       },
     };
 
-    // STEP 3: Create ExternalAccountClient
-    const externalAuthClient = await ExternalAccountClient.fromJSON(externalAccountClientOptions);
+    // STEP 3: Instantiate client directly (NOT via fromJSON)
+    const authClient = new ExternalAccountClient(externalAccountClientOptions);
 
-    // STEP 4: Inject custom supplier directly (dynamic replacement)
-    externalAuthClient.credentialSource = {
-      subject_token_supplier: vercelOidcTokenSupplier,
-    };
-
-    // STEP 5: Initialize Firestore client
+    // STEP 4: Initialize Firestore client with authClient
     const firestoreClient = new Firestore({
       projectId: process.env.GOOGLE_PROJECT_ID,
-      authClient: externalAuthClient,
+      authClient,
     });
 
-    // STEP 6: Test query
+    // STEP 5: Run test query
     const snap = await firestoreClient.collection("clientSizingSubmissions").limit(1).get();
 
     return NextResponse.json({
