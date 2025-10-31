@@ -3,6 +3,13 @@ import { NextResponse } from "next/server";
 import { initializeApp, getApps, getApp } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
 
+console.log("🧩 Test Firestore route invoked");
+console.log("🔍 GOOGLE_PROJECT_ID:", process.env.GOOGLE_PROJECT_ID);
+console.log("🔍 GOOGLE_SERVICE_ACCOUNT_EMAIL:", process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL);
+console.log("🔍 GOOGLE_WORKLOAD_IDENTITY_PROVIDER:", process.env.GOOGLE_WORKLOAD_IDENTITY_PROVIDER);
+console.log("🔍 GOOGLE_AUDIENCE:", process.env.GOOGLE_AUDIENCE);
+console.log("🔍 VERCEL_OIDC_TOKEN present:", !!process.env.VERCEL_OIDC_TOKEN);
+
 export async function GET() {
   try {
     // Initialize Firebase Admin if not already done
