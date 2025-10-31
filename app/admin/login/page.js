@@ -12,10 +12,16 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [status, setStatus] = useState('');
   const [loading, setLoading] = useState(true);
-  const hasRedirected = useRef(false); // ✅ prevents redirect loop
+  const hasRedirected = useRef(false);
 
-  // ✅ Handle returning user session (delayed to prevent flicker)
   useEffect(() => {
+    if (!auth) {
+      console.error("⚠️ Firebase Auth not initialized");
+      setStatus("⚠️ Firebase not configured correctly");
+      setLoading(false);
+      return;
+    }
+
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user && !hasRedirected.current && window.location.pathname === '/admin/login') {
         hasRedirected.current = true;
