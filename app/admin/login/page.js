@@ -36,7 +36,8 @@ export default function LoginPage() {
         .then(() => {
           window.localStorage.removeItem('emailForSignIn');
           setStatus('✅ Sign-in successful — redirecting...');
-          router.replace('/admin/client-submissions');
+          setTimeout(() => router.replace('/admin/client-submissions'), 500);
+
         })
         .catch((error) => {
           console.error('Sign-in failed:', error);
