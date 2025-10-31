@@ -1,9 +1,9 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { sendSignInLinkToEmail, isSignInWithEmailLink, signInWithEmailLink } from 'firebase/auth';
-import { auth } from '@/lib/firebaseClient';
+import { isSignInWithEmailLink, signInWithEmailLink, sendSignInLinkToEmail } from 'firebase/auth';
 import { useAuth } from '@/context/AuthContext';
+import { auth } from '@/lib/firebaseClient';
 
 export default function LoginPage() {
   const { user, loading } = useAuth();
@@ -13,18 +13,17 @@ export default function LoginPage() {
   const [sending, setSending] = useState(false);
 
   // ✅ Redirect if already logged in
+  useEffect(() => {
+    if (!loading && user) {
+      console.log('✅ Redirecting authenticated user...');
+      router.replace('/admin/client-submissions');
+    }
+  }, [loading, user, router]);
 
-useEffect(() => {
-  if (!loading && user) {
-    console.log('✅ Redirecting authenticated user...');
-    router.replace('/admin/client-submissions');
-  }
-}, [loading, user, router]);
-
-  // 👇 Add this line right after the effect
+  // ✅ Prevent rendering login form while redirecting
   if (!loading && user) return null;
 
-  // ✅ Handle email link verification
+  // ✅ Handle magic link sign-in
   useEffect(() => {
     if (isSignInWithEmailLink(auth, window.location.href)) {
       const storedEmail = window.localStorage.getItem('emailForSignIn');
@@ -32,17 +31,19 @@ useEffect(() => {
         setStatus('❌ Missing stored email — please enter it again.');
         return;
       }
+
       setStatus('⏳ Verifying sign-in link...');
       signInWithEmailLink(auth, storedEmail, window.location.href)
         .then(() => {
           window.localStorage.removeItem('emailForSignIn');
           setStatus('✅ Sign-in successful — redirecting...');
-          setTimeout(() => router.replace('/admin/client-submissions'), 600);
+          setTimeout(() => router.replace('/admin/client-submissions'), 500);
         })
         .catch((err) => setStatus(`❌ ${err.message}`));
     }
   }, [router]);
 
+  // ✅ Send magic link
   const handleSendLink = async (e) => {
     e.preventDefault();
     if (sending) return;
@@ -63,7 +64,12 @@ useEffect(() => {
     }
   };
 
-  if (loading) return <p style={{ color: '#00ff99', textAlign: 'center', marginTop: '4rem' }}>Authenticating...</p>;
+  if (loading)
+    return (
+      <p style={{ color: '#00ff99', textAlign: 'center', marginTop: '4rem' }}>
+        Authenticating...
+      </p>
+    );
 
   return (
     <div
@@ -78,7 +84,10 @@ useEffect(() => {
         fontFamily: 'sans-serif',
       }}
     >
-      <h2 style={{ color: '#00ff99', marginBottom: '1rem' }}>PresenceHQ Admin Login</h2>
+      <h2 style={{ color: '#00ff99', marginBottom: '1rem' }}>
+        PresenceHQ Admin Login
+      </h2>
+
       <form
         onSubmit={handleSendLink}
         style={{
