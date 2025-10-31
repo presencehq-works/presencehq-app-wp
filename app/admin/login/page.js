@@ -1,44 +1,55 @@
 'use client';
-import { useState, useEffect } from 'react';
+
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { isSignInWithEmailLink, signInWithEmailLink, sendSignInLinkToEmail } from 'firebase/auth';
-import { useAuth } from '@/context/AuthContext';
+import { getAuth, isSignInWithEmailLink, signInWithEmailLink, sendSignInLinkToEmail } from 'firebase/auth';
+import { useAuth } from '@/context/AuthContext'; // existing context
 import { auth } from '@/lib/firebaseClient';
 
 export default function LoginPage() {
-  const { user, loading } = useAuth();
   const router = useRouter();
+  const { user, loading } = useAuth();
   const [email, setEmail] = useState('');
-  const [status, setStatus] = useState('');
+  const [status, setStatus] = useState('Ready');
   const [sending, setSending] = useState(false);
 
-  // redirect if already logged in
+  // ✅ If already logged in, go straight to submissions
   useEffect(() => {
-    if (!loading && user) router.replace('/admin/client-submissions');
+    if (!loading && user) {
+      router.replace('/admin/client-submissions');
+    }
   }, [loading, user, router]);
 
-  // handle email link
+  // ✅ Handle magic link click verification
   useEffect(() => {
-    if (isSignInWithEmailLink(auth, window.location.href)) {
-      const storedEmail = window.localStorage.getItem('emailForSignIn');
+    const authInstance = getAuth();
+
+    if (isSignInWithEmailLink(authInstance, window.location.href)) {
+      let storedEmail = window.localStorage.getItem('emailForSignIn');
       if (!storedEmail) {
-        setStatus('❌ Missing stored email — please enter it again.');
+        setStatus('❌ Missing stored email — please re-enter.');
         return;
       }
+
       setStatus('⏳ Verifying sign-in link...');
-      signInWithEmailLink(auth, storedEmail, window.location.href)
+      signInWithEmailLink(authInstance, storedEmail, window.location.href)
         .then(() => {
           window.localStorage.removeItem('emailForSignIn');
-          setStatus('✅ Signed in — redirecting...');
+          setStatus('✅ Sign-in successful — redirecting...');
           router.replace('/admin/client-submissions');
         })
-        .catch((err) => setStatus(`❌ ${err.message}`));
+        .catch((error) => {
+          console.error('Sign-in failed:', error);
+          setStatus(`❌ ${error.message}`);
+          router.replace('/admin/login');
+        });
     }
   }, [router]);
 
   const handleSendLink = async (e) => {
     e.preventDefault();
     if (sending) return;
+
     setSending(true);
     setStatus('⏳ Sending login link...');
     try {
@@ -49,13 +60,15 @@ export default function LoginPage() {
       await sendSignInLinkToEmail(auth, email, settings);
       window.localStorage.setItem('emailForSignIn', email);
       setStatus(`✅ Login link sent to ${email}`);
-    } catch (err) {
-      setStatus(`❌ ${err.message}`);
+    } catch (error) {
+      console.error('Send link failed:', error);
+      setStatus(`❌ ${error.message}`);
     } finally {
       setSending(false);
     }
   };
 
+  // --- UI ---
   if (loading) return <p style={{ color: '#00ff99', textAlign: 'center', marginTop: '4rem' }}>Authenticating...</p>;
 
   return (
@@ -72,6 +85,7 @@ export default function LoginPage() {
       }}
     >
       <h2 style={{ color: '#00ff99', marginBottom: '1rem' }}>PresenceHQ Admin Login</h2>
+
       <form
         onSubmit={handleSendLink}
         style={{
@@ -120,20 +134,7 @@ export default function LoginPage() {
           {sending ? '⏳ Sending...' : 'Send Login Link'}
         </button>
 
-        {status && (
-          <p
-            style={{
-              marginTop: '1rem',
-              color: status.startsWith('✅')
-                ? '#00ff99'
-                : status.startsWith('⏳')
-                ? '#ffcc00'
-                : '#ff4444',
-            }}
-          >
-            {status}
-          </p>
-        )}
+        <p style={{ marginTop: '1rem', color: '#00ff99' }}>{status}</p>
       </form>
     </div>
   );
