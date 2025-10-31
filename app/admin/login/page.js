@@ -13,12 +13,16 @@ export default function LoginPage() {
   const [sending, setSending] = useState(false);
 
   // ✅ Redirect if already logged in
-  useEffect(() => {
-    if (!loading && user) {
-      console.log('✅ Redirecting authenticated user...');
-      router.replace('/admin/client-submissions');
-    }
-  }, [loading, user, router]);
+
+useEffect(() => {
+  if (!loading && user) {
+    console.log('✅ Redirecting authenticated user...');
+    router.replace('/admin/client-submissions');
+  }
+}, [loading, user, router]);
+
+  // 👇 Add this line right after the effect
+  if (!loading && user) return null;
 
   // ✅ Handle email link verification
   useEffect(() => {
