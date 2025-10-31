@@ -1,26 +1,30 @@
 // app/admin/reset/page.js
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { initializeApp, getApps, getApp } from "firebase/app";
-import { getAuth, verifyPasswordResetCode, confirmPasswordReset } from "firebase/auth";
+import {
+  getAuth,
+  verifyPasswordResetCode,
+  confirmPasswordReset,
+} from "firebase/auth";
 import { useSearchParams, useRouter } from "next/navigation";
-import { validatePassword } from "@/utils/validation"; // ✅ Password validator
+import { validatePassword } from "@/utils/validation";
 
-// Firebase Config
+// --- Firebase Config ---
 const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FB_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FB_AUTH_DOMAIN,
-  projectId: process.env.NEXT_PUBLIC_FB_PROJECT_ID,
-  storageBucket: process.env.NEXT_PUBLIC_FB_STORAGE_BUCKET,
-  messagingSenderId: process.env.NEXT_PUBLIC_FB_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FB_APP_ID,
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
 const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 const auth = getAuth(app);
 
-export default function ResetPasswordPage() {
+function ResetPasswordInner() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
@@ -72,7 +76,9 @@ export default function ResetPasswordPage() {
   if (success) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-presence-dark text-presence-light">
-        <p className="text-presence-green text-lg">✅ Password updated! Redirecting to login...</p>
+        <p className="text-presence-green text-lg">
+          ✅ Password updated! Redirecting to login...
+        </p>
       </div>
     );
   }
@@ -143,5 +149,14 @@ export default function ResetPasswordPage() {
         </button>
       </form>
     </div>
+  );
+}
+
+// ✅ Wrap in Suspense to fix Next.js 15 build error
+export default function ResetPasswordPage() {
+  return (
+    <Suspense fallback={<div>Loading reset form...</div>}>
+      <ResetPasswordInner />
+    </Suspense>
   );
 }
