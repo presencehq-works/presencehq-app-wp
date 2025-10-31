@@ -1,16 +1,26 @@
 import { NextResponse } from "next/server";
 import { Firestore } from "@google-cloud/firestore";
 
-// ✅ Decode Base64 service account credentials stored in Vercel
-const credentials = JSON.parse(
-  Buffer.from(process.env.GOOGLE_CREDENTIALS_BASE64, "base64").toString("utf8")
-);
+// ✅ Safe Firestore initialization for Vercel build/runtime separation
+let firestore;
 
-// ✅ Initialize Firestore using decoded credentials
-const firestore = new Firestore({
-  projectId: process.env.GOOGLE_PROJECT_ID,
-  credentials,
-});
+if (process.env.GOOGLE_CREDENTIALS_BASE64) {
+  try {
+    const credentials = JSON.parse(
+      Buffer.from(process.env.GOOGLE_CREDENTIALS_BASE64, "base64").toString("utf8")
+    );
+    firestore = new Firestore({
+      projectId: process.env.GOOGLE_PROJECT_ID,
+      credentials,
+    });
+  } catch (err) {
+    console.warn("⚠️ Failed to parse GOOGLE_CREDENTIALS_BASE64:", err.message);
+    firestore = new Firestore({ projectId: process.env.GOOGLE_PROJECT_ID });
+  }
+} else {
+  console.warn("⚠️ GOOGLE_CREDENTIALS_BASE64 not defined — using projectId only.");
+  firestore = new Firestore({ projectId: process.env.GOOGLE_PROJECT_ID });
+}
 
 export async function GET(req) {
   try {
