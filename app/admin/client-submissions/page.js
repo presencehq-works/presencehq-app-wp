@@ -1,104 +1,87 @@
 // app/admin/client-submissions/page.js
-import { cookies } from 'next/headers';
-import { redirect } from 'next/navigation';
-import { adminAuth, adminDb } from '../../../lib/server/firebaseAdmin';
+"use client";
 
-function fmtMoney(n) {
-  if (n == null || n === '') return '—';
-  const num = Number(n);
-  if (Number.isNaN(num)) return String(n);
-  return '$' + num.toLocaleString();
-}
+import { useEffect, useState } from "react";
 
-function fmtDate(ts) {
-  try {
-    if (!ts) return '—';
-    const d = typeof ts.toDate === 'function' ? ts.toDate() : new Date(ts);
-    return d.toLocaleString();
-  } catch {
-    return '—';
-  }
-}
+export default function ClientSubmissionsPage() {
+  const [submissions, setSubmissions] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-export default async function ClientSubmissionsAdmin() {
-  // 1) Read cookie on the server
-  const token = cookies().get('__session')?.value;
-  if (!token) {
-    redirect('/admin/login');
-  }
+  useEffect(() => {
+    async function fetchSubmissions() {
+      try {
+        const res = await fetch("/api/admin/client-submissions");
+        const data = await res.json();
 
-  // 2) Verify token + role on the server
-  let decoded;
-  try {
-    decoded = await adminAuth.verifyIdToken(token);
-  } catch {
-    redirect('/admin/login');
-  }
+        if (!res.ok) throw new Error(data.error || "Failed to fetch data");
 
-  if (decoded?.role !== 'admin') {
-    redirect('/admin/login');
-  }
+        setSubmissions(data.submissions || []);
+      } catch (err) {
+        console.error("❌ Error fetching submissions:", err);
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    }
 
-  // 3) Fetch Firestore server-side
-  const snap = await adminDb
-    .collection('clientSizingSubmissions')
-    .orderBy('submittedAt', 'desc')
-    .get();
+    fetchSubmissions();
+  }, []);
 
-  const submissions = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  if (loading)
+    return (
+      <div className="p-8 text-center text-gray-500">
+        Loading client submissions...
+      </div>
+    );
 
-  // 4) Render HTML (no client hooks)
+  if (error)
+    return (
+      <div className="p-8 text-center text-red-600">
+        ❌ Error loading submissions: {error}
+      </div>
+    );
+
   return (
-    <div className="min-h-screen bg-presence-dark text-presence-light px-8 py-10">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-semibold text-presence-accent">
-          Client Submissions
-        </h1>
-        <div className="text-sm opacity-80">
-          {decoded?.email ?? 'Admin'}
-          <a
-            href="/admin/logout"
-            className="ml-3 inline-flex items-center px-3 py-1 rounded-md border border-presence-mid hover:bg-presence-mid/50"
-          >
-            Sign out
-          </a>
-        </div>
-      </div>
+    <div className="p-8">
+      <h1 className="text-2xl font-bold mb-6 text-gray-800">
+        Client Submissions
+      </h1>
 
-      <div className="overflow-x-auto border border-presence-mid rounded-xl">
-        <table className="w-full text-sm border-collapse">
-          <thead className="bg-presence-mid/30 text-presence-light uppercase text-xs">
-            <tr>
-              <th className="p-3 text-left">Business</th>
-              <th className="p-3 text-left">Email</th>
-              <th className="p-3 text-left">Revenue</th>
-              <th className="p-3 text-left">Employees</th>
-              <th className="p-3 text-left">Industry</th>
-              <th className="p-3 text-left">Submitted</th>
-            </tr>
-          </thead>
-          <tbody>
-            {submissions.length === 0 ? (
+      {submissions.length === 0 ? (
+        <p className="text-gray-600">No submissions found.</p>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="min-w-full border border-gray-300 rounded-lg text-sm">
+            <thead className="bg-gray-100 text-gray-700">
               <tr>
-                <td colSpan={6} className="p-4 text-center opacity-60">
-                  No submissions found.
-                </td>
+                <th className="p-3 text-left border-b">Business Name</th>
+                <th className="p-3 text-left border-b">Email</th>
+                <th className="p-3 text-left border-b">Industry</th>
+                <th className="p-3 text-left border-b">Revenue</th>
+                <th className="p-3 text-left border-b">Employees</th>
+                <th className="p-3 text-left border-b">Challenge</th>
+                <th className="p-3 text-left border-b">Timestamp</th>
               </tr>
-            ) : (
-              submissions.map((s) => (
-                <tr key={s.id} className="border-t border-presence-mid hover:bg-presence-mid/20">
-                  <td className="p-3">{s.businessName || '—'}</td>
-                  <td className="p-3 opacity-80">{s.email || '—'}</td>
-                  <td className="p-3">{fmtMoney(s.monthlyRevenue)}</td>
-                  <td className="p-3">{s.employees ?? '—'}</td>
-                  <td className="p-3">{s.industry || '—'}</td>
-                  <td className="p-3 opacity-70">{fmtDate(s.submittedAt)}</td>
+            </thead>
+            <tbody>
+              {submissions.map((s) => (
+                <tr key={s.id} className="border-b hover:bg-gray-50">
+                  <td className="p-3">{s.businessName}</td>
+                  <td className="p-3">{s.email}</td>
+                  <td className="p-3">{s.industry}</td>
+                  <td className="p-3">{s.monthlyRevenue}</td>
+                  <td className="p-3">{s.employees}</td>
+                  <td className="p-3 max-w-xs truncate">{s.challenge}</td>
+                  <td className="p-3 text-gray-500 text-xs">
+                    {new Date(s.timestamp).toLocaleString()}
+                  </td>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }
