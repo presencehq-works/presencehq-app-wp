@@ -12,16 +12,13 @@ export default function LoginPage() {
   const [status, setStatus] = useState('');
   const [sending, setSending] = useState(false);
 
-  // ✅ Redirect if already logged in
+  // ✅ Handle redirect for existing session
   useEffect(() => {
     if (!loading && user) {
       console.log('✅ Redirecting authenticated user...');
       router.replace('/admin/client-submissions');
     }
   }, [loading, user, router]);
-
-  // ✅ Prevent rendering login form while redirecting
-  if (!loading && user) return null;
 
   // ✅ Handle magic link sign-in
   useEffect(() => {
@@ -43,7 +40,12 @@ export default function LoginPage() {
     }
   }, [router]);
 
-  // ✅ Send magic link
+  // ✅ Do not render login form if already logged in
+  if (!loading && user) {
+    return null;
+  }
+
+  // ✅ Send login link
   const handleSendLink = async (e) => {
     e.preventDefault();
     if (sending) return;
@@ -64,6 +66,7 @@ export default function LoginPage() {
     }
   };
 
+  // ✅ Loading UI while Firebase initializes
   if (loading)
     return (
       <p style={{ color: '#00ff99', textAlign: 'center', marginTop: '4rem' }}>
@@ -71,6 +74,7 @@ export default function LoginPage() {
       </p>
     );
 
+  // ✅ Login Form UI
   return (
     <div
       style={{
