@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   sendSignInLinkToEmail,
   isSignInWithEmailLink,
@@ -12,13 +12,17 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [status, setStatus] = useState('');
   const [loading, setLoading] = useState(true);
+  const hasRedirected = useRef(false); // ✅ prevents redirect loop
 
-  // ✅ Detect session, redirect only once
+  // ✅ Handle returning user session (delayed to prevent flicker)
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user && window.location.pathname === '/admin/login') {
-        // Only redirect if we're *on* the login page
-        window.location.replace('/admin/client-submissions');
+      if (user && !hasRedirected.current && window.location.pathname === '/admin/login') {
+        hasRedirected.current = true;
+        setStatus('✅ Already signed in — redirecting...');
+        setTimeout(() => {
+          window.location.replace('/admin/client-submissions');
+        }, 1000);
       } else {
         setLoading(false);
       }
@@ -26,7 +30,7 @@ export default function LoginPage() {
     return () => unsubscribe();
   }, []);
 
-  // ✅ Handle magic link sign-in
+  // ✅ Handle sign-in via email link
   useEffect(() => {
     if (isSignInWithEmailLink(auth, window.location.href)) {
       let storedEmail = window.localStorage.getItem('emailForSignIn');
@@ -37,7 +41,10 @@ export default function LoginPage() {
         .then(() => {
           window.localStorage.removeItem('emailForSignIn');
           setStatus('✅ Signed in!');
-          window.location.replace('/admin/client-submissions');
+          hasRedirected.current = true;
+          setTimeout(() => {
+            window.location.replace('/admin/client-submissions');
+          }, 1000);
         })
         .catch((error) => {
           console.error('❌ Sign-in failed:', error);
@@ -63,7 +70,19 @@ export default function LoginPage() {
     }
   };
 
-  if (loading) return <div style={{ color: '#0f0', textAlign: 'center', marginTop: 100 }}>Loading...</div>;
+  if (loading)
+    return (
+      <div
+        style={{
+          color: '#00ff99',
+          textAlign: 'center',
+          marginTop: 150,
+          fontFamily: 'sans-serif',
+        }}
+      >
+        Loading authentication...
+      </div>
+    );
 
   return (
     <div
