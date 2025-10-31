@@ -5,7 +5,7 @@ import { Suspense, useEffect, useState } from "react";
 import { getAuth, verifyPasswordResetCode, confirmPasswordReset } from "firebase/auth";
 import { useSearchParams, useRouter } from "next/navigation";
 import { validatePassword } from "@/utils/validation";
-import app from "@/lib/firebaseClient"; // ✅ Use shared Firebase instance
+import { app } from "@/lib/firebaseClient";
 
 // ✅ Use shared auth instance
 const auth = getAuth(app);
