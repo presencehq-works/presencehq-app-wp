@@ -11,18 +11,22 @@ import { auth } from '@/lib/firebaseClient';
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [status, setStatus] = useState('');
+  const [loading, setLoading] = useState(true);
 
-  // ✅ Detect existing session and auto-redirect
+  // ✅ Detect session, redirect only once
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user) {
-        window.location.href = '/admin/client-submissions';
+      if (user && window.location.pathname === '/admin/login') {
+        // Only redirect if we're *on* the login page
+        window.location.replace('/admin/client-submissions');
+      } else {
+        setLoading(false);
       }
     });
     return () => unsubscribe();
   }, []);
 
-  // ✅ Handle sign-in via email link
+  // ✅ Handle magic link sign-in
   useEffect(() => {
     if (isSignInWithEmailLink(auth, window.location.href)) {
       let storedEmail = window.localStorage.getItem('emailForSignIn');
@@ -33,7 +37,7 @@ export default function LoginPage() {
         .then(() => {
           window.localStorage.removeItem('emailForSignIn');
           setStatus('✅ Signed in!');
-          window.location.href = '/admin/client-submissions';
+          window.location.replace('/admin/client-submissions');
         })
         .catch((error) => {
           console.error('❌ Sign-in failed:', error);
@@ -43,7 +47,6 @@ export default function LoginPage() {
     }
   }, []);
 
-  // ✅ Send login link
   const handleSendLink = async (e) => {
     e.preventDefault();
     try {
@@ -60,39 +63,88 @@ export default function LoginPage() {
     }
   };
 
+  if (loading) return <div style={{ color: '#0f0', textAlign: 'center', marginTop: 100 }}>Loading...</div>;
+
   return (
-    <div style={{ maxWidth: 400, margin: '100px auto', textAlign: 'center' }}>
-      <h2>PresenceHQ Admin Login</h2>
-      <form onSubmit={handleSendLink}>
+    <div
+      style={{
+        minHeight: '100vh',
+        backgroundColor: '#0b0b0b',
+        color: '#e3e3e3',
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        fontFamily: 'sans-serif',
+      }}
+    >
+      <form
+        onSubmit={handleSendLink}
+        style={{
+          background: '#121212',
+          border: '1px solid #333',
+          padding: '2rem',
+          borderRadius: '12px',
+          width: '100%',
+          maxWidth: '380px',
+          textAlign: 'center',
+          boxShadow: '0 0 20px rgba(0,255,100,0.1)',
+        }}
+      >
+        <h2 style={{ color: '#00ff99', marginBottom: '1rem' }}>
+          PresenceHQ Admin Login
+        </h2>
+
         <input
           type="email"
           placeholder="Enter your email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
+          required
           style={{
             width: '100%',
-            padding: 10,
-            marginBottom: 10,
-            border: '1px solid #999',
-            borderRadius: 6,
+            padding: '10px',
+            marginBottom: '12px',
+            borderRadius: '8px',
+            border: '1px solid #444',
+            background: '#1c1c1c',
+            color: '#fff',
           }}
-          required
         />
+
         <button
           type="submit"
           style={{
             width: '100%',
-            padding: 10,
-            background: '#222',
-            color: '#fff',
-            borderRadius: 6,
+            padding: '10px',
+            background: '#00ff99',
+            color: '#000',
+            fontWeight: 600,
+            border: 'none',
+            borderRadius: '8px',
             cursor: 'pointer',
+            transition: 'background 0.3s ease',
           }}
+          onMouseOver={(e) => (e.target.style.background = '#00e88a')}
+          onMouseOut={(e) => (e.target.style.background = '#00ff99')}
         >
           Send Login Link
         </button>
+
+        {status && (
+          <p
+            style={{
+              marginTop: '1rem',
+              color: status.includes('✅')
+                ? '#00ff99'
+                : status.includes('⚠️')
+                ? '#ffcc00'
+                : '#ff4444',
+            }}
+          >
+            {status}
+          </p>
+        )}
       </form>
-      <p>{status}</p>
     </div>
   );
 }
