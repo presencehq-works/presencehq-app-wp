@@ -9,14 +9,12 @@ export async function GET() {
     console.log("🔍 GOOGLE_PROJECT_ID:", process.env.GOOGLE_PROJECT_ID);
     console.log("🔍 OIDC token present:", !!process.env.VERCEL_OIDC_TOKEN);
 
-    // --- STEP 1: Define custom token supplier for Vercel OIDC ---
     const vercelOidcTokenSupplier = async () => {
       const token = process.env.VERCEL_OIDC_TOKEN;
       if (!token) throw new Error("VERCEL_OIDC_TOKEN missing");
       return token;
     };
 
-    // --- STEP 2: Base WIF JSON config (without function) ---
     const baseExternalAccountOptions = {
       type: "external_account",
       client_id: "vercel-provider",
@@ -30,13 +28,9 @@ export async function GET() {
       scopes: ["https://www.googleapis.com/auth/datastore"],
     };
 
-    // --- STEP 3: Initialize GoogleAuth using jsonContent ---
     const auth = new GoogleAuth({ jsonContent: baseExternalAccountOptions });
-
-    // --- STEP 4: Create the actual auth client ---
     const authClient = await auth.getClient();
 
-    // --- STEP 5: Inject the dynamic token supplier ---
     if (typeof authClient.retrieveSubjectToken === "function") {
       console.log("🔧 Injecting subject_token_supplier into authClient...");
       authClient.retrieveSubjectToken = vercelOidcTokenSupplier;
@@ -44,13 +38,12 @@ export async function GET() {
       throw new Error("AuthClient does not expose retrieveSubjectToken");
     }
 
-    // --- STEP 6: Initialize Firestore with this patched client ---
+    // ✅ FIXED: use `auth`, not `authClient`
     const firestore = new Firestore({
       projectId: "presencehq-sandbox",
-      authClient,
+      auth: authClient,
     });
 
-    // --- STEP 7: Query Firestore to confirm success ---
     const snap = await firestore.collection("clientSizingSubmissions").limit(1).get();
 
     return NextResponse.json({
