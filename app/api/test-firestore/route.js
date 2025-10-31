@@ -9,46 +9,38 @@ export async function GET() {
     console.log("🔍 GOOGLE_PROJECT_ID:", process.env.GOOGLE_PROJECT_ID);
     console.log("🔍 OIDC token present:", !!process.env.VERCEL_OIDC_TOKEN);
 
-    // --- STEP 1: Define a token supplier function ---
+    // --- STEP 1: Token supplier function ---
     const vercelOidcTokenSupplier = async () => {
       const token = process.env.VERCEL_OIDC_TOKEN;
       if (!token) throw new Error("VERCEL_OIDC_TOKEN not found in environment.");
       return token;
     };
 
-    // --- STEP 2: Construct External Account credentials ---
+    // --- STEP 2: Build proper WIF credentials config ---
     const externalAccountClientOptions = {
       type: "external_account",
-
-      // ✅ CRITICAL FIX: Explicitly set client_id
-      client_id: "vercel-provider", // replace with your provider ID if different
-
-      // ✅ Ensure audience is exactly correct
+      client_id: "vercel-provider", // same as your provider ID
       audience:
         "//iam.googleapis.com/projects/111425640751/locations/global/workloadIdentityPools/vercel-pool/providers/vercel-provider",
-
       subject_token_type: "urn:ietf:params:oauth:token-type:jwt",
       token_url: "https://sts.googleapis.com/v1/token",
-
       service_account_impersonation_url:
         "https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/firebase-adminsdk-fbsvc@presencehq-sandbox.iam.gserviceaccount.com:generateAccessToken",
-
-      // ✅ Correct structure for credential source
       credential_source: {
         subject_token_supplier: vercelOidcTokenSupplier,
       },
     };
 
-    // --- STEP 3: Create the ExternalAccountClient directly ---
-    const externalAuthClient = new ExternalAccountClient(externalAccountClientOptions);
+    // --- STEP 3: Use the correct factory method ---
+    const externalAuthClient = await ExternalAccountClient.fromJSON(externalAccountClientOptions);
 
-    // --- STEP 4: Initialize Firestore with the custom auth client ---
+    // --- STEP 4: Initialize Firestore client ---
     const firestoreClient = new Firestore({
       projectId: process.env.GOOGLE_PROJECT_ID,
       authClient: externalAuthClient,
     });
 
-    // --- STEP 5: Run a test query ---
+    // --- STEP 5: Test query ---
     const snap = await firestoreClient.collection("clientSizingSubmissions").limit(1).get();
 
     return NextResponse.json({
