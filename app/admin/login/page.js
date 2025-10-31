@@ -1,57 +1,75 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import {
-  sendSignInLinkToEmail,
+  onAuthStateChanged,
   isSignInWithEmailLink,
   signInWithEmailLink,
-  onAuthStateChanged,
+  sendSignInLinkToEmail,
 } from 'firebase/auth';
-import { useRouter } from 'next/navigation';
 import { auth } from '@/lib/firebaseClient';
 
 export default function LoginPage() {
   const router = useRouter();
+
   const [email, setEmail] = useState('');
-  const [status, setStatus] = useState('');
+  const [status, setStatus] = useState('Checking authentication...');
   const [redirecting, setRedirecting] = useState(false);
+  const [linkVerificationComplete, setLinkVerificationComplete] = useState(false);
   const hasRedirected = useRef(false);
 
-  // ✅ Handle persistent user session (without infinite loop)
+  // 🔹 Handle existing logged-in users (only redirects if not from link)
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user && !hasRedirected.current && !redirecting) {
+      if (user && !redirecting && !hasRedirected.current) {
+        if (linkVerificationComplete) {
+          // Let link verification handle its own redirect
+          setStatus(`✅ Logged in as ${user.email} (link verified handled redirect)`);
+          return;
+        }
+
         hasRedirected.current = true;
         setRedirecting(true);
         setStatus(`✅ Logged in as ${user.email} — redirecting...`);
-        setTimeout(() => {
-          router.push('/admin/client-submissions');
-        }, 1000); // small buffer so router push completes cleanly
+        setTimeout(() => router.replace('/admin/client-submissions'), 100);
       }
     });
-    return () => unsubscribe();
-  }, [router, redirecting]);
 
-  // ✅ Handle sign-in link
+    return () => unsubscribe();
+  }, [router, redirecting, linkVerificationComplete]);
+
+  // 🔹 Handle sign-in via email link
   useEffect(() => {
     if (isSignInWithEmailLink(auth, window.location.href)) {
       let storedEmail = window.localStorage.getItem('emailForSignIn');
       if (!storedEmail) storedEmail = window.prompt('Confirm your email address');
+      if (!storedEmail) {
+        setStatus('❌ Sign-in failed: Email required.');
+        return;
+      }
+
+      setStatus('⏳ Verifying sign-in link...');
       signInWithEmailLink(auth, storedEmail, window.location.href)
         .then(() => {
           window.localStorage.removeItem('emailForSignIn');
+          setLinkVerificationComplete(true);
+          hasRedirected.current = true;
+          setRedirecting(true);
           setStatus('✅ Sign-in link verified — redirecting...');
-          setTimeout(() => {
-            router.push('/admin/client-submissions');
-          }, 1000);
+          setTimeout(() => router.replace('/admin/client-submissions'), 500);
         })
         .catch((error) => {
           console.error('❌ Sign-in failed:', error);
           setStatus(`❌ Sign-in failed: ${error.message}`);
+          router.replace('/admin/login');
         });
+    } else {
+      // Clear stale email if not in link flow
+      window.localStorage.removeItem('emailForSignIn');
     }
   }, [router]);
 
-  // ✅ Send login link
+  // 🔹 Send the login link
   const handleSendLink = async (e) => {
     e.preventDefault();
     try {
@@ -68,6 +86,7 @@ export default function LoginPage() {
     }
   };
 
+  // 🔹 UI
   return (
     <div
       style={{
