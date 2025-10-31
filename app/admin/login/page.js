@@ -1,7 +1,7 @@
 // app/admin/login/page.js
 "use client";
 
-console.log("🧩 Firebase env check:", process.env.NEXT_PUBLIC_FIREBASE_API_KEY);
+// console.log("🧩 Firebase env check:", process.env.NEXT_PUBLIC_FIREBASE_API_KEY);
 
 import { useState } from "react";
 import { signInWithEmailAndPassword, signOut } from "firebase/auth";
