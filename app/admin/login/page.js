@@ -15,54 +15,50 @@ export default function LoginPage() {
   const [debug, setDebug] = useState({});
   const hasRedirected = useRef(false);
 
+  // ✅ Listen for existing user sessions — NO redirect for now
   useEffect(() => {
     const d = {};
     d.authDefined = !!auth;
-    try {
-      if (!auth) {
-        d.error = '❌ Firebase Auth not initialized';
-        setStatus('⚠️ Firebase not configured correctly');
-        setDebug(d);
-        setLoading(false);
-        return;
+
+    if (!auth) {
+      d.error = '❌ Firebase Auth not initialized';
+      setStatus('⚠️ Firebase not configured correctly');
+      setDebug(d);
+      setLoading(false);
+      return;
+    }
+
+    d.beforeListener = true;
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      d.listenerTriggered = true;
+      d.user = user ? user.email || '(user exists)' : 'no user';
+
+      if (user) {
+        setStatus(`✅ Logged in as ${user.email}`);
+      } else {
+        setStatus('👀 No active session — ready for login.');
       }
 
-      d.beforeListener = true;
-      const unsubscribe = onAuthStateChanged(auth, (user) => {
-        d.listenerTriggered = true;
-        d.user = user ? user.email || '(user exists)' : 'no user';
-        if (user && !hasRedirected.current && window.location.pathname === '/admin/login') {
-          hasRedirected.current = true;
-          setStatus('✅ Already signed in — redirecting...');
-          setDebug(d);
-          setTimeout(() => window.location.replace('/admin/client-submissions'), 1200);
-        } else {
-          setStatus('👀 No active session — ready for login.');
-          setDebug(d);
-          setLoading(false);
-        }
-      });
-      return () => unsubscribe();
-    } catch (e) {
-      d.catch = e.message;
       setDebug(d);
-      console.error('❌ Auth init error:', e);
-      setStatus('❌ Auth init error');
       setLoading(false);
-    }
+    });
+
+    return () => unsubscribe();
   }, []);
 
+  // ✅ Handle magic-link sign-in (no redirect yet)
   useEffect(() => {
     if (!auth) return;
+
     if (isSignInWithEmailLink(auth, window.location.href)) {
       setStatus('📩 Handling sign-in link...');
       let storedEmail = window.localStorage.getItem('emailForSignIn');
       if (!storedEmail) storedEmail = window.prompt('Confirm your email address');
+
       signInWithEmailLink(auth, storedEmail, window.location.href)
         .then(() => {
           window.localStorage.removeItem('emailForSignIn');
-          setStatus('✅ Signed in! Redirecting...');
-          setTimeout(() => window.location.replace('/admin/client-submissions'), 1200);
+          setStatus(`✅ Signed in as ${storedEmail}`);
         })
         .catch((error) => {
           console.error('❌ Sign-in failed:', error);
@@ -71,6 +67,7 @@ export default function LoginPage() {
     }
   }, []);
 
+  // ✅ Send login link to email
   const handleSendLink = async (e) => {
     e.preventDefault();
     if (!auth) {
