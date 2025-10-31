@@ -7,14 +7,14 @@ try {
   console.log("🧩 Checking env vars...");
   console.log("GOOGLE_PROJECT_ID:", process.env.GOOGLE_PROJECT_ID);
   console.log(
-    "GOOGLE_CREDENTIALS_BASE64 length:",
-    process.env.GOOGLE_CREDENTIALS_BASE64
-      ? process.env.GOOGLE_CREDENTIALS_BASE64.length
+    "GOOGLE_APPLICATION_CREDENTIALS_BASE64 length:",
+    process.env.GOOGLE_APPLICATION_CREDENTIALS_BASE64
+      ? process.env.GOOGLE_APPLICATION_CREDENTIALS_BASE64.length
       : "undefined"
   );
 
-  const base64 = process.env.GOOGLE_CREDENTIALS_BASE64;
-  if (!base64) throw new Error("GOOGLE_CREDENTIALS_BASE64 not set");
+  const base64 = process.env.GOOGLE_APPLICATION_CREDENTIALS_BASE64;
+  if (!base64) throw new Error("GOOGLE_APPLICATION_CREDENTIALS_BASE64 not set");
 
   const decoded = Buffer.from(base64, "base64").toString("utf8");
   console.log("Decoded starts with:", decoded.slice(0, 80));
