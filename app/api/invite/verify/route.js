@@ -4,15 +4,22 @@ import { Firestore } from "@google-cloud/firestore";
 let firestore;
 
 try {
-  // Decode Base64 credentials
+  console.log("🧩 Checking env vars...");
+  console.log("GOOGLE_PROJECT_ID:", process.env.GOOGLE_PROJECT_ID);
+  console.log(
+    "GOOGLE_CREDENTIALS_BASE64 length:",
+    process.env.GOOGLE_CREDENTIALS_BASE64
+      ? process.env.GOOGLE_CREDENTIALS_BASE64.length
+      : "undefined"
+  );
+
   const base64 = process.env.GOOGLE_CREDENTIALS_BASE64;
   if (!base64) throw new Error("GOOGLE_CREDENTIALS_BASE64 not set");
 
-  const credentials = JSON.parse(
-    Buffer.from(base64, "base64").toString("utf8")
-  );
+  const decoded = Buffer.from(base64, "base64").toString("utf8");
+  console.log("Decoded starts with:", decoded.slice(0, 80));
 
-  // Initialize Firestore explicitly with credentials
+  const credentials = JSON.parse(decoded);
   firestore = new Firestore({
     projectId: process.env.GOOGLE_PROJECT_ID,
     credentials: {
@@ -20,6 +27,7 @@ try {
       private_key: credentials.private_key,
     },
   });
+  console.log("✅ Firestore initialized successfully");
 } catch (initError) {
   console.error("❌ Firestore initialization error:", initError);
 }
@@ -30,30 +38,21 @@ export async function GET(req) {
 
     const { searchParams } = new URL(req.url);
     const token = searchParams.get("token");
-    if (!token) {
-      return NextResponse.json({ status: "❌ Missing token" }, { status: 400 });
-    }
 
     const docRef = firestore.doc(`invites/${token}`);
     const doc = await docRef.get();
 
-    if (!doc.exists) {
-      return NextResponse.json(
-        { status: "❌ Invalid token", valid: false },
-        { status: 404 }
-      );
-    }
+    if (!doc.exists)
+      return NextResponse.json({ status: "❌ Invalid token" }, { status: 404 });
 
     const data = doc.data();
-    if (data.used) {
+    if (data.used)
       return NextResponse.json(
-        { status: "⚠️ Token already used", valid: false, email: data.email },
+        { status: "⚠️ Token already used", email: data.email },
         { status: 403 }
       );
-    }
 
     await docRef.update({ used: true });
-
     return NextResponse.json({
       status: "✅ Valid token",
       valid: true,
