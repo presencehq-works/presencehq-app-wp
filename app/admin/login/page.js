@@ -10,16 +10,21 @@ import { auth } from '@/lib/firebaseClient';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
-  const [status, setStatus] = useState('🟡 Starting...');
+  const [status, setStatus] = useState('🟡 Initializing...');
   const [loading, setLoading] = useState(true);
   const hasRedirected = useRef(false);
+  const listenerAttached = useRef(false);
 
-  // ✅ Listen for existing user sessions
+  // ✅ Attach listener ONCE
   useEffect(() => {
+    if (!auth || listenerAttached.current) return;
+    listenerAttached.current = true;
+
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user && !hasRedirected.current) {
         hasRedirected.current = true;
         setStatus(`✅ Logged in as ${user.email} — redirecting...`);
+        // short delay for UI feedback
         setTimeout(() => {
           window.location.replace('/admin/client-submissions');
         }, 1000);
@@ -28,29 +33,30 @@ export default function LoginPage() {
         setLoading(false);
       }
     });
+
     return () => unsubscribe();
   }, []);
 
-  // ✅ Handle magic link sign-in
+  // ✅ Handle magic link sign-in once
   useEffect(() => {
     if (!auth) return;
-    if (isSignInWithEmailLink(auth, window.location.href)) {
+    const href = window.location.href;
+    if (isSignInWithEmailLink(auth, href)) {
       setStatus('📩 Handling sign-in link...');
       let storedEmail = window.localStorage.getItem('emailForSignIn');
       if (!storedEmail) storedEmail = window.prompt('Confirm your email address');
-
-      signInWithEmailLink(auth, storedEmail, window.location.href)
+      signInWithEmailLink(auth, storedEmail, href)
         .then(() => {
           window.localStorage.removeItem('emailForSignIn');
-          setStatus(`✅ Signed in as ${storedEmail} — redirecting...`);
-          setTimeout(() => {
-            window.location.replace('/admin/client-submissions');
-          }, 1000);
+          setStatus(`✅ Signed in as ${storedEmail}`);
         })
         .catch((error) => {
           console.error('❌ Sign-in failed:', error);
           setStatus(`❌ Sign-in failed: ${error.message}`);
+          setLoading(false);
         });
+    } else {
+      setLoading(false);
     }
   }, []);
 
@@ -71,7 +77,7 @@ export default function LoginPage() {
     }
   };
 
-  if (loading) {
+  if (loading)
     return (
       <div
         style={{
@@ -81,10 +87,9 @@ export default function LoginPage() {
           fontFamily: 'sans-serif',
         }}
       >
-        Loading authentication...
+        {status}
       </div>
     );
-  }
 
   return (
     <div
