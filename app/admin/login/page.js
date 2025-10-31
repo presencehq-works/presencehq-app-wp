@@ -1,97 +1,68 @@
 'use client';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import {
-  onAuthStateChanged,
-  isSignInWithEmailLink,
-  signInWithEmailLink,
-  sendSignInLinkToEmail,
-} from 'firebase/auth';
+import { isSignInWithEmailLink, signInWithEmailLink, sendSignInLinkToEmail } from 'firebase/auth';
+import { useAuth } from '@/context/AuthContext';
 import { auth } from '@/lib/firebaseClient';
 
 export default function LoginPage() {
+  const { user, loading } = useAuth();
   const router = useRouter();
-
   const [email, setEmail] = useState('');
-  const [status, setStatus] = useState('Checking authentication...');
-  const [redirecting, setRedirecting] = useState(false);
-  const [linkVerificationComplete, setLinkVerificationComplete] = useState(false);
-  const hasRedirected = useRef(false);
+  const [status, setStatus] = useState('');
+  const [sending, setSending] = useState(false);
 
-  // 🔹 Handle existing logged-in users (only redirects if not from link)
+  // redirect if already logged in
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user && !redirecting && !hasRedirected.current) {
-        if (linkVerificationComplete) {
-          // Let link verification handle its own redirect
-          setStatus(`✅ Logged in as ${user.email} (link verified handled redirect)`);
-          return;
-        }
+    if (!loading && user) router.replace('/admin/client-submissions');
+  }, [loading, user, router]);
 
-        hasRedirected.current = true;
-        setRedirecting(true);
-        setStatus(`✅ Logged in as ${user.email} — redirecting...`);
-        setTimeout(() => router.replace('/admin/client-submissions'), 100);
-      }
-    });
-
-    return () => unsubscribe();
-  }, [router, redirecting, linkVerificationComplete]);
-
-  // 🔹 Handle sign-in via email link
+  // handle email link
   useEffect(() => {
     if (isSignInWithEmailLink(auth, window.location.href)) {
-      let storedEmail = window.localStorage.getItem('emailForSignIn');
-      if (!storedEmail) storedEmail = window.prompt('Confirm your email address');
+      const storedEmail = window.localStorage.getItem('emailForSignIn');
       if (!storedEmail) {
-        setStatus('❌ Sign-in failed: Email required.');
+        setStatus('❌ Missing stored email — please enter it again.');
         return;
       }
-
       setStatus('⏳ Verifying sign-in link...');
       signInWithEmailLink(auth, storedEmail, window.location.href)
         .then(() => {
           window.localStorage.removeItem('emailForSignIn');
-          setLinkVerificationComplete(true);
-          hasRedirected.current = true;
-          setRedirecting(true);
-          setStatus('✅ Sign-in link verified — redirecting...');
-          setTimeout(() => router.replace('/admin/client-submissions'), 500);
+          setStatus('✅ Signed in — redirecting...');
+          router.replace('/admin/client-submissions');
         })
-        .catch((error) => {
-          console.error('❌ Sign-in failed:', error);
-          setStatus(`❌ Sign-in failed: ${error.message}`);
-          router.replace('/admin/login');
-        });
-    } else {
-      // Clear stale email if not in link flow
-      window.localStorage.removeItem('emailForSignIn');
+        .catch((err) => setStatus(`❌ ${err.message}`));
     }
   }, [router]);
 
-  // 🔹 Send the login link
   const handleSendLink = async (e) => {
     e.preventDefault();
+    if (sending) return;
+    setSending(true);
+    setStatus('⏳ Sending login link...');
     try {
-      const actionCodeSettings = {
+      const settings = {
         url: 'https://presencehq-sandbox.vercel.app/admin/login',
         handleCodeInApp: true,
       };
-      await sendSignInLinkToEmail(auth, email, actionCodeSettings);
+      await sendSignInLinkToEmail(auth, email, settings);
       window.localStorage.setItem('emailForSignIn', email);
       setStatus(`✅ Login link sent to ${email}`);
-    } catch (error) {
-      console.error('❌ Failed to send link:', error);
-      setStatus(`❌ Failed to send link: ${error.message}`);
+    } catch (err) {
+      setStatus(`❌ ${err.message}`);
+    } finally {
+      setSending(false);
     }
   };
 
-  // 🔹 UI
+  if (loading) return <p style={{ color: '#00ff99', textAlign: 'center', marginTop: '4rem' }}>Authenticating...</p>;
+
   return (
     <div
       style={{
         minHeight: '100vh',
-        backgroundColor: '#0b0b0b',
+        background: '#0b0b0b',
         color: '#e3e3e3',
         display: 'flex',
         justifyContent: 'center',
@@ -100,7 +71,7 @@ export default function LoginPage() {
         fontFamily: 'sans-serif',
       }}
     >
-      <h2 style={{ color: '#00ff99' }}>PresenceHQ Admin Login</h2>
+      <h2 style={{ color: '#00ff99', marginBottom: '1rem' }}>PresenceHQ Admin Login</h2>
       <form
         onSubmit={handleSendLink}
         style={{
@@ -112,7 +83,6 @@ export default function LoginPage() {
           maxWidth: '380px',
           textAlign: 'center',
           boxShadow: '0 0 20px rgba(0,255,100,0.1)',
-          marginTop: '1rem',
         }}
       >
         <input
@@ -131,40 +101,40 @@ export default function LoginPage() {
             color: '#fff',
           }}
         />
+
         <button
           type="submit"
+          disabled={sending}
           style={{
             width: '100%',
             padding: '10px',
-            background: '#00ff99',
+            background: sending ? '#444' : '#00ff99',
             color: '#000',
             fontWeight: 600,
             border: 'none',
             borderRadius: '8px',
-            cursor: 'pointer',
+            cursor: sending ? 'not-allowed' : 'pointer',
             transition: 'background 0.3s ease',
           }}
-          onMouseOver={(e) => (e.target.style.background = '#00e88a')}
-          onMouseOut={(e) => (e.target.style.background = '#00ff99')}
         >
-          Send Login Link
+          {sending ? '⏳ Sending...' : 'Send Login Link'}
         </button>
-      </form>
 
-      {status && (
-        <p
-          style={{
-            marginTop: '1rem',
-            color: status.includes('✅')
-              ? '#00ff99'
-              : status.includes('⚠️')
-              ? '#ffcc00'
-              : '#ff4444',
-          }}
-        >
-          {status}
-        </p>
-      )}
+        {status && (
+          <p
+            style={{
+              marginTop: '1rem',
+              color: status.startsWith('✅')
+                ? '#00ff99'
+                : status.startsWith('⏳')
+                ? '#ffcc00'
+                : '#ff4444',
+            }}
+          >
+            {status}
+          </p>
+        )}
+      </form>
     </div>
   );
 }

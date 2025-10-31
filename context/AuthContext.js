@@ -5,18 +5,20 @@ import { auth } from '@/lib/firebaseClient';
 
 const AuthContext = createContext({ user: null, loading: true });
 
-export const useAuth = () => useContext(AuthContext);
+export function useAuth() {
+  return useContext(AuthContext);
+}
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, (user) => {
-      setUser(user);
+    const unsubscribe = onAuthStateChanged(auth, (u) => {
+      setUser(u);
       setLoading(false);
     });
-    return () => unsub();
+    return () => unsubscribe();
   }, []);
 
   return (
@@ -24,12 +26,10 @@ export function AuthProvider({ children }) {
       {loading ? (
         <div
           style={{
-            minHeight: '100vh',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
             color: '#00ff99',
-            background: '#0b0b0b',
+            textAlign: 'center',
+            marginTop: 150,
+            fontFamily: 'sans-serif',
           }}
         >
           Authenticating...
