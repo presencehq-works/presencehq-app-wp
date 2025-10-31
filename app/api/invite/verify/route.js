@@ -1,37 +1,37 @@
 import { NextResponse } from "next/server";
 import { Firestore } from "@google-cloud/firestore";
 
-// ✅ Safe Firestore initialization for Vercel build/runtime separation
 let firestore;
 
-if (process.env.GOOGLE_CREDENTIALS_BASE64) {
-  try {
-    const credentials = JSON.parse(
-      Buffer.from(process.env.GOOGLE_CREDENTIALS_BASE64, "base64").toString("utf8")
-    );
-    firestore = new Firestore({
-      projectId: process.env.GOOGLE_PROJECT_ID,
-      credentials,
-    });
-  } catch (err) {
-    console.warn("⚠️ Failed to parse GOOGLE_CREDENTIALS_BASE64:", err.message);
-    firestore = new Firestore({ projectId: process.env.GOOGLE_PROJECT_ID });
-  }
-} else {
-  console.warn("⚠️ GOOGLE_CREDENTIALS_BASE64 not defined — using projectId only.");
-  firestore = new Firestore({ projectId: process.env.GOOGLE_PROJECT_ID });
+try {
+  // Decode Base64 credentials
+  const base64 = process.env.GOOGLE_CREDENTIALS_BASE64;
+  if (!base64) throw new Error("GOOGLE_CREDENTIALS_BASE64 not set");
+
+  const credentials = JSON.parse(
+    Buffer.from(base64, "base64").toString("utf8")
+  );
+
+  // Initialize Firestore explicitly with credentials
+  firestore = new Firestore({
+    projectId: process.env.GOOGLE_PROJECT_ID,
+    credentials: {
+      client_email: credentials.client_email,
+      private_key: credentials.private_key,
+    },
+  });
+} catch (initError) {
+  console.error("❌ Firestore initialization error:", initError);
 }
 
 export async function GET(req) {
   try {
+    if (!firestore) throw new Error("Firestore client not initialized");
+
     const { searchParams } = new URL(req.url);
     const token = searchParams.get("token");
-
     if (!token) {
-      return NextResponse.json(
-        { status: "❌ Missing token" },
-        { status: 400 }
-      );
+      return NextResponse.json({ status: "❌ Missing token" }, { status: 400 });
     }
 
     const docRef = firestore.doc(`invites/${token}`);
@@ -45,7 +45,6 @@ export async function GET(req) {
     }
 
     const data = doc.data();
-
     if (data.used) {
       return NextResponse.json(
         { status: "⚠️ Token already used", valid: false, email: data.email },
@@ -53,7 +52,6 @@ export async function GET(req) {
       );
     }
 
-    // ✅ Mark token as used (you can comment this out for testing)
     await docRef.update({ used: true });
 
     return NextResponse.json({
