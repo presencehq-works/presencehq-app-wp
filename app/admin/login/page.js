@@ -4,6 +4,7 @@ import {
   sendSignInLinkToEmail,
   isSignInWithEmailLink,
   signInWithEmailLink,
+  onAuthStateChanged,
 } from 'firebase/auth';
 import { auth } from '@/lib/firebaseClient';
 
@@ -11,11 +12,23 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [status, setStatus] = useState('');
 
-  // Handle return from magic link
+  // ✅ Detect existing session and auto-redirect
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        window.location.href = '/admin/client-submissions';
+      }
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // ✅ Handle sign-in via email link
   useEffect(() => {
     if (isSignInWithEmailLink(auth, window.location.href)) {
       let storedEmail = window.localStorage.getItem('emailForSignIn');
-      if (!storedEmail) storedEmail = window.prompt('Confirm your email');
+      if (!storedEmail) {
+        storedEmail = window.prompt('Confirm your email address');
+      }
       signInWithEmailLink(auth, storedEmail, window.location.href)
         .then(() => {
           window.localStorage.removeItem('emailForSignIn');
@@ -24,17 +37,18 @@ export default function LoginPage() {
         })
         .catch((error) => {
           console.error('❌ Sign-in failed:', error);
-          setStatus('❌ Sign-in failed');
+          window.localStorage.removeItem('emailForSignIn');
+          setStatus('⚠️ Invalid or expired link. Please request a new one.');
         });
     }
   }, []);
 
+  // ✅ Send login link
   const handleSendLink = async (e) => {
     e.preventDefault();
-    setStatus('');
     try {
       const actionCodeSettings = {
-        url: `${window.location.origin}/admin/login`,
+        url: 'https://presencehq-sandbox.vercel.app/admin/login',
         handleCodeInApp: true,
       };
       await sendSignInLinkToEmail(auth, email, actionCodeSettings);
@@ -47,41 +61,38 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-900 text-white">
-      <form
-        onSubmit={handleSendLink}
-        className="bg-gray-800 rounded-2xl shadow-xl p-10 w-full max-w-sm flex flex-col items-center space-y-4 border border-gray-700"
-      >
-        <h1 className="text-2xl font-semibold text-center text-[#5efc8d]">
-          PresenceHQ Admin Login
-        </h1>
-
+    <div style={{ maxWidth: 400, margin: '100px auto', textAlign: 'center' }}>
+      <h2>PresenceHQ Admin Login</h2>
+      <form onSubmit={handleSendLink}>
         <input
           type="email"
           placeholder="Enter your email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="w-full px-4 py-2 rounded-md bg-gray-700 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#5efc8d]"
+          style={{
+            width: '100%',
+            padding: 10,
+            marginBottom: 10,
+            border: '1px solid #999',
+            borderRadius: 6,
+          }}
           required
         />
-
         <button
           type="submit"
-          className="w-full bg-[#5efc8d] text-gray-900 font-semibold py-2 rounded-md hover:bg-[#49d67a] transition-colors"
+          style={{
+            width: '100%',
+            padding: 10,
+            background: '#222',
+            color: '#fff',
+            borderRadius: 6,
+            cursor: 'pointer',
+          }}
         >
           Send Login Link
         </button>
-
-        {status && (
-          <p className="text-sm text-center mt-2">
-            {status.includes('✅') ? (
-              <span className="text-green-400">{status}</span>
-            ) : (
-              <span className="text-red-400">{status}</span>
-            )}
-          </p>
-        )}
       </form>
+      <p>{status}</p>
     </div>
   );
 }
