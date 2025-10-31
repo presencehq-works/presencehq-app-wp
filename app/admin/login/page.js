@@ -12,44 +12,28 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [status, setStatus] = useState('🟡 Starting...');
   const [loading, setLoading] = useState(true);
-  const [debug, setDebug] = useState({});
   const hasRedirected = useRef(false);
 
-  // ✅ Listen for existing user sessions — NO redirect for now
+  // ✅ Listen for existing user sessions
   useEffect(() => {
-    const d = {};
-    d.authDefined = !!auth;
-
-    if (!auth) {
-      d.error = '❌ Firebase Auth not initialized';
-      setStatus('⚠️ Firebase not configured correctly');
-      setDebug(d);
-      setLoading(false);
-      return;
-    }
-
-    d.beforeListener = true;
     const unsubscribe = onAuthStateChanged(auth, (user) => {
-      d.listenerTriggered = true;
-      d.user = user ? user.email || '(user exists)' : 'no user';
-
-      if (user) {
-        setStatus(`✅ Logged in as ${user.email}`);
-      } else {
+      if (user && !hasRedirected.current) {
+        hasRedirected.current = true;
+        setStatus(`✅ Logged in as ${user.email} — redirecting...`);
+        setTimeout(() => {
+          window.location.replace('/admin/client-submissions');
+        }, 1000);
+      } else if (!user) {
         setStatus('👀 No active session — ready for login.');
+        setLoading(false);
       }
-
-      setDebug(d);
-      setLoading(false);
     });
-
     return () => unsubscribe();
   }, []);
 
-  // ✅ Handle magic-link sign-in (no redirect yet)
+  // ✅ Handle magic link sign-in
   useEffect(() => {
     if (!auth) return;
-
     if (isSignInWithEmailLink(auth, window.location.href)) {
       setStatus('📩 Handling sign-in link...');
       let storedEmail = window.localStorage.getItem('emailForSignIn');
@@ -58,7 +42,10 @@ export default function LoginPage() {
       signInWithEmailLink(auth, storedEmail, window.location.href)
         .then(() => {
           window.localStorage.removeItem('emailForSignIn');
-          setStatus(`✅ Signed in as ${storedEmail}`);
+          setStatus(`✅ Signed in as ${storedEmail} — redirecting...`);
+          setTimeout(() => {
+            window.location.replace('/admin/client-submissions');
+          }, 1000);
         })
         .catch((error) => {
           console.error('❌ Sign-in failed:', error);
@@ -67,13 +54,9 @@ export default function LoginPage() {
     }
   }, []);
 
-  // ✅ Send login link to email
+  // ✅ Send login link
   const handleSendLink = async (e) => {
     e.preventDefault();
-    if (!auth) {
-      setStatus('⚠️ Firebase not initialized');
-      return;
-    }
     try {
       const actionCodeSettings = {
         url: 'https://presencehq-sandbox.vercel.app/admin/login',
@@ -88,6 +71,21 @@ export default function LoginPage() {
     }
   };
 
+  if (loading) {
+    return (
+      <div
+        style={{
+          color: '#00ff99',
+          textAlign: 'center',
+          marginTop: 150,
+          fontFamily: 'sans-serif',
+        }}
+      >
+        Loading authentication...
+      </div>
+    );
+  }
+
   return (
     <div
       style={{
@@ -98,74 +96,64 @@ export default function LoginPage() {
         justifyContent: 'center',
         alignItems: 'center',
         flexDirection: 'column',
-        fontFamily: 'monospace',
+        fontFamily: 'sans-serif',
       }}
     >
-      <h2 style={{ color: '#00ff99' }}>PresenceHQ Login Debug</h2>
-      <p>{status}</p>
-      <pre
+      <form
+        onSubmit={handleSendLink}
         style={{
-          textAlign: 'left',
-          background: '#111',
-          padding: '1rem',
-          borderRadius: '8px',
-          width: '90%',
-          maxWidth: '600px',
-          overflow: 'auto',
-          color: '#00ff99',
-          fontSize: '0.8rem',
+          background: '#121212',
+          border: '1px solid #333',
+          padding: '2rem',
+          borderRadius: '12px',
+          width: '100%',
+          maxWidth: '380px',
+          textAlign: 'center',
+          boxShadow: '0 0 20px rgba(0,255,100,0.1)',
         }}
       >
-        {JSON.stringify(debug, null, 2)}
-      </pre>
+        <h2 style={{ color: '#00ff99', marginBottom: '1rem' }}>
+          PresenceHQ Admin Login
+        </h2>
 
-      {!loading && (
-        <form
-          onSubmit={handleSendLink}
+        <input
+          type="email"
+          placeholder="Enter your email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
           style={{
-            background: '#121212',
-            border: '1px solid #333',
-            padding: '1.5rem',
-            borderRadius: '12px',
             width: '100%',
-            maxWidth: '360px',
-            textAlign: 'center',
-            marginTop: '1rem',
+            padding: '10px',
+            marginBottom: '12px',
+            borderRadius: '8px',
+            border: '1px solid #444',
+            background: '#1c1c1c',
+            color: '#fff',
           }}
+        />
+
+        <button
+          type="submit"
+          style={{
+            width: '100%',
+            padding: '10px',
+            background: '#00ff99',
+            color: '#000',
+            fontWeight: 600,
+            border: 'none',
+            borderRadius: '8px',
+            cursor: 'pointer',
+            transition: 'background 0.3s ease',
+          }}
+          onMouseOver={(e) => (e.target.style.background = '#00e88a')}
+          onMouseOut={(e) => (e.target.style.background = '#00ff99')}
         >
-          <input
-            type="email"
-            placeholder="Enter your email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            style={{
-              width: '100%',
-              padding: '10px',
-              marginBottom: '10px',
-              borderRadius: '8px',
-              border: '1px solid #444',
-              background: '#1c1c1c',
-              color: '#fff',
-            }}
-          />
-          <button
-            type="submit"
-            style={{
-              width: '100%',
-              padding: '10px',
-              background: '#00ff99',
-              color: '#000',
-              fontWeight: 600,
-              border: 'none',
-              borderRadius: '8px',
-              cursor: 'pointer',
-            }}
-          >
-            Send Login Link
-          </button>
-        </form>
-      )}
+          Send Login Link
+        </button>
+
+        <p style={{ marginTop: '1rem', color: '#00ff99' }}>{status}</p>
+      </form>
     </div>
   );
 }
