@@ -1,27 +1,15 @@
 'use client';
 import { useState, useEffect } from 'react';
 import {
-  getAuth,
   sendSignInLinkToEmail,
   isSignInWithEmailLink,
   signInWithEmailLink,
 } from 'firebase/auth';
-import { initializeApp, getApps } from 'firebase/app';
-
-const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-};
-
-if (!getApps().length) {
-  initializeApp(firebaseConfig);
-}
+import { auth } from '@/lib/firebaseClient'; // ✅ import shared instance
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [status, setStatus] = useState('');
-
-  const auth = getAuth();
 
   // Automatically handle the link click when coming from email
   useEffect(() => {
@@ -41,7 +29,7 @@ export default function LoginPage() {
           setStatus('❌ Sign-in failed');
         });
     }
-  }, [auth]);
+  }, []);
 
   // Send login link
   const handleSendLink = async (e) => {
