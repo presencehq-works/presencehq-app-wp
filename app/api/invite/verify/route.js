@@ -1,8 +1,15 @@
 import { NextResponse } from "next/server";
 import { Firestore } from "@google-cloud/firestore";
 
+// ✅ Decode Base64 service account credentials stored in Vercel
+const credentials = JSON.parse(
+  Buffer.from(process.env.GOOGLE_CREDENTIALS_BASE64, "base64").toString("utf8")
+);
+
+// ✅ Initialize Firestore using decoded credentials
 const firestore = new Firestore({
   projectId: process.env.GOOGLE_PROJECT_ID,
+  credentials,
 });
 
 export async function GET(req) {
@@ -36,6 +43,7 @@ export async function GET(req) {
       );
     }
 
+    // ✅ Mark token as used (you can comment this out for testing)
     await docRef.update({ used: true });
 
     return NextResponse.json({
