@@ -5,19 +5,17 @@ import {
   isSignInWithEmailLink,
   signInWithEmailLink,
 } from 'firebase/auth';
-import { auth } from '@/lib/firebaseClient'; // ✅ import shared instance
+import { auth } from '@/lib/firebaseClient';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [status, setStatus] = useState('');
 
-  // Automatically handle the link click when coming from email
+  // Handle return from magic link
   useEffect(() => {
     if (isSignInWithEmailLink(auth, window.location.href)) {
       let storedEmail = window.localStorage.getItem('emailForSignIn');
-      if (!storedEmail) {
-        storedEmail = window.prompt('Confirm your email address');
-      }
+      if (!storedEmail) storedEmail = window.prompt('Confirm your email');
       signInWithEmailLink(auth, storedEmail, window.location.href)
         .then(() => {
           window.localStorage.removeItem('emailForSignIn');
@@ -31,9 +29,9 @@ export default function LoginPage() {
     }
   }, []);
 
-  // Send login link
   const handleSendLink = async (e) => {
     e.preventDefault();
+    setStatus('');
     try {
       const actionCodeSettings = {
         url: `${window.location.origin}/admin/login`,
@@ -49,20 +47,41 @@ export default function LoginPage() {
   };
 
   return (
-    <div style={{ maxWidth: 400, margin: '100px auto', textAlign: 'center' }}>
-      <h2>PresenceHQ Admin Login</h2>
-      <form onSubmit={handleSendLink}>
+    <div className="min-h-screen flex items-center justify-center bg-gray-900 text-white">
+      <form
+        onSubmit={handleSendLink}
+        className="bg-gray-800 rounded-2xl shadow-xl p-10 w-full max-w-sm flex flex-col items-center space-y-4 border border-gray-700"
+      >
+        <h1 className="text-2xl font-semibold text-center text-[#5efc8d]">
+          PresenceHQ Admin Login
+        </h1>
+
         <input
           type="email"
           placeholder="Enter your email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          style={{ width: '100%', padding: 10, marginBottom: 10 }}
+          className="w-full px-4 py-2 rounded-md bg-gray-700 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#5efc8d]"
           required
         />
-        <button type="submit">Send Login Link</button>
+
+        <button
+          type="submit"
+          className="w-full bg-[#5efc8d] text-gray-900 font-semibold py-2 rounded-md hover:bg-[#49d67a] transition-colors"
+        >
+          Send Login Link
+        </button>
+
+        {status && (
+          <p className="text-sm text-center mt-2">
+            {status.includes('✅') ? (
+              <span className="text-green-400">{status}</span>
+            ) : (
+              <span className="text-red-400">{status}</span>
+            )}
+          </p>
+        )}
       </form>
-      <p>{status}</p>
     </div>
   );
 }
