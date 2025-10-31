@@ -1,0 +1,36 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ✅ Client submissions (one per user)
+    match /clientSizingSubmissions/{userId} {
+      // Admins can do everything
+      allow read, write: if request.auth.token.role == "admin";
+
+      // Regular users — can only create/read their own doc once
+      allow create: if request.auth != null
+                    && request.auth.uid == userId
+                    && !exists(/databases/$(database)/documents/clientSizingSubmissions/$(userId));
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow update, delete: if false; // lock after create
+    }
+
+    // ✅ Email index (used for login checks)
+    match /submissionEmails/{emailId} {
+      // Public read — login form checks existing email
+      allow read: if true;
+
+      // Regular users can write their own email index after submitting
+      allow write: if request.auth != null;
+
+      // Admin can manage all
+      allow read, write: if request.auth.token.role == "admin";
+    }
+
+    // ✅ Global fallback — block everything else for non-admins
+    match /{document=**} {
+      allow read, write: if request.auth != null
+                         && request.auth.token.role == "admin";
+    }
+  }
+}

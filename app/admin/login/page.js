@@ -1,24 +1,12 @@
 // app/admin/login/page.js
 "use client";
 
+console.log("🧩 Firebase env check:", process.env.NEXT_PUBLIC_FIREBASE_API_KEY);
+
 import { useState } from "react";
-import { getAuth, signInWithEmailAndPassword, signOut } from "firebase/auth";
-import { initializeApp, getApps, getApp } from "firebase/app";
+import { signInWithEmailAndPassword, signOut } from "firebase/auth";
 import { useRouter } from "next/navigation";
-
-// --- Firebase Config ---
-const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FB_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FB_AUTH_DOMAIN,
-  projectId: process.env.NEXT_PUBLIC_FB_PROJECT_ID,
-  storageBucket: process.env.NEXT_PUBLIC_FB_STORAGE_BUCKET,
-  messagingSenderId: process.env.NEXT_PUBLIC_FB_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FB_APP_ID,
-};
-
-// --- Initialize Firebase ---
-const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
-const auth = getAuth(app);
+import { auth } from "@/firebaseConfig"; // ✅ use shared config
 
 export default function AdminLoginPage() {
   const router = useRouter();

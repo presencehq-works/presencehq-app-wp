@@ -1,0 +1,8 @@
+name: projects/presencehq-sandbox/policies/iam.allowedPolicyMemberDomains
+spec:
+  rules:
+  - values:
+      allowedValues:
+      - allUsers
+      - allAuthenticatedUsers
+      - C01j557mi

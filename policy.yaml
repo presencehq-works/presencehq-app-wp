@@ -1,0 +1,21 @@
+name: organizations/444148389269/policies/iam.allowedPolicyMemberDomains
+spec:
+  rules:
+  # RULE 1: Exception for Tagged Resources
+  # If the resource has the tag (public-ingress:allow),
+  # explicitly allow the public identities (allUsers and allAuthenticatedUsers)
+  - condition:
+      expression: resource.matchTag('444148389269/public-ingress', 'allow')
+      title: allow-public-identities-for-public-ingress
+    values:
+      allowedValues:
+      - allUsers
+      - allAuthenticatedUsers
+
+  # RULE 2: Default Domain Restriction (FIXED)
+  # Apply this rule to all resources that DON'T meet the condition above.
+  # This enforces your domain restriction for all other projects/resources.
+  - values:
+      allowedValues:
+      # Removed 'customer/' to match the exact format returned by gcloud describe
+      - C01j557mi

@@ -1,0 +1,7 @@
+name: projects/presencehq-sandbox/policies/iam.allowedPolicyMemberDomains
+spec:
+  # Setting inheritFromParent: true with no rules defined effectively removes the local override.
+  # This forces the project to immediately check the parent (Organization) policy.
+  # Since the Tag Binding should have propagated by now, the conditional rule should activate.
+  inheritFromParent: true
+  rules: []

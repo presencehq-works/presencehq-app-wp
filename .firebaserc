@@ -1,0 +1,15 @@
+{
+  "projects": {
+    "default": "presencehq-sandbox"
+  },
+  "targets": {
+    "presencehq-sandbox": {
+      "hosting": {
+        "default": [
+          "presencehq-sandbox"
+        ]
+      }
+    }
+  },
+  "etags": {}
+}
