@@ -1,7 +1,7 @@
 // app/api/test-firestore/route.js
 import { NextResponse } from "next/server";
-import { initializeApp, getApps, getApp } from "firebase-admin/app";
-import { getFirestore } from "firebase-admin/firestore";
+import * as admin from "firebase-admin";
+import { adminDb } from "@/lib/server/firebaseAdmin";
 
 console.log("🧩 Test Firestore route invoked");
 console.log("🔍 GOOGLE_PROJECT_ID:", process.env.GOOGLE_PROJECT_ID);
@@ -12,18 +12,10 @@ console.log("🔍 VERCEL_OIDC_TOKEN present:", !!process.env.VERCEL_OIDC_TOKEN);
 
 export async function GET() {
   try {
-    // Initialize Firebase Admin if not already done
-    const app =
-      getApps().length > 0
-        ? getApp()
-        : initializeApp({
-            projectId: process.env.GOOGLE_PROJECT_ID,
-          });
+    console.log("🧩 Firebase apps currently initialized:", admin.apps.length);
+    console.log("🧩 Firebase app names:", admin.apps.map((a) => a.name));
 
-    const db = getFirestore(app);
-
-    // Try reading a known collection (or a dummy one)
-    const snap = await db.collection("clientSizingSubmissions").limit(1).get();
+    const snap = await adminDb.collection("clientSizingSubmissions").limit(1).get();
     const count = snap.size;
 
     return NextResponse.json({
