@@ -18,22 +18,16 @@ export const AuthProvider = ({ children }) => {
     return () => unsub();
   }, []);
 
+  if (loading)
+    return (
+      <div style={{ color: '#00ff99', textAlign: 'center', marginTop: '4rem' }}>
+        Authenticating...
+      </div>
+    );
+
   return (
     <AuthContext.Provider value={{ user, loading }}>
-      {loading ? (
-        <div
-          style={{
-            color: '#00ff99',
-            textAlign: 'center',
-            marginTop: 150,
-            fontFamily: 'sans-serif',
-          }}
-        >
-          Authenticating...
-        </div>
-      ) : (
-        children
-      )}
+      {children}
     </AuthContext.Provider>
   );
 };

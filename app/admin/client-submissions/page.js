@@ -8,45 +8,16 @@ export default function ClientSubmissionsPage() {
   const router = useRouter();
 
   useEffect(() => {
-    if (!loading) {
-      if (!user) {
-        console.log('🚫 No user — redirecting to login');
-        router.replace('/admin/login');
-      } else {
-        console.log('✅ Authenticated user:', user.email);
-      }
-    }
+    if (!loading && !user) router.replace('/admin/login');
   }, [loading, user, router]);
 
-  // While loading, don't render or redirect yet
-  if (loading) {
-    return (
-      <div style={{ color: '#00ff99', textAlign: 'center', marginTop: 100 }}>
-        Loading session...
-      </div>
-    );
-  }
-
-  // If no user (redirect will happen), render nothing to avoid flicker
+  if (loading) return <p style={{ color: '#00ff99', textAlign: 'center', marginTop: 100 }}>Loading session...</p>;
   if (!user) return null;
 
-  // ✅ Authenticated view
   return (
-    <div
-      style={{
-        color: '#e3e3e3',
-        background: '#0b0b0b',
-        minHeight: '100vh',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        fontFamily: 'sans-serif',
-      }}
-    >
-      <h1 style={{ color: '#00ff99' }}>Client Submissions</h1>
-      <p>Welcome, {user.email}</p>
-      <p>This means the redirect loop is officially dead 🎯</p>
+    <div style={{ color: '#e3e3e3', background: '#0b0b0b', minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontFamily: 'sans-serif' }}>
+      <h1 style={{ color: '#00ff99' }}>Welcome, {user.email}</h1>
+      <p>✅ Authenticated successfully. Protected route works.</p>
     </div>
   );
 }
