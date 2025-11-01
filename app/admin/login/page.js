@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { isSignInWithEmailLink, signInWithEmailLink, sendSignInLinkToEmail } from 'firebase/auth';
 import { useAuth } from '@/context/AuthContext';
@@ -12,15 +12,14 @@ export default function LoginPage() {
   const [status, setStatus] = useState('');
   const [sending, setSending] = useState(false);
 
-  // ✅ Handle redirect for existing session
+  // 🔄 If user already logged in, redirect
   useEffect(() => {
     if (!loading && user) {
-      console.log('✅ Redirecting authenticated user...');
       router.replace('/admin/client-submissions');
     }
   }, [loading, user, router]);
 
-  // ✅ Handle magic link sign-in
+  // 📨 Handle magic link
   useEffect(() => {
     if (isSignInWithEmailLink(auth, window.location.href)) {
       const storedEmail = window.localStorage.getItem('emailForSignIn');
@@ -28,35 +27,29 @@ export default function LoginPage() {
         setStatus('❌ Missing stored email — please enter it again.');
         return;
       }
-
       setStatus('⏳ Verifying sign-in link...');
       signInWithEmailLink(auth, storedEmail, window.location.href)
         .then(() => {
           window.localStorage.removeItem('emailForSignIn');
-          setStatus('✅ Sign-in successful — redirecting...');
+          setStatus('✅ Signed in — redirecting...');
           setTimeout(() => router.replace('/admin/client-submissions'), 500);
         })
         .catch((err) => setStatus(`❌ ${err.message}`));
     }
   }, [router]);
 
-  // ✅ Do not render login form if already logged in
-  if (!loading && user) {
-    return null;
-  }
+  if (!loading && user) return null;
 
-  // ✅ Send login link
   const handleSendLink = async (e) => {
     e.preventDefault();
     if (sending) return;
     setSending(true);
     setStatus('⏳ Sending login link...');
     try {
-      const settings = {
+      await sendSignInLinkToEmail(auth, email, {
         url: 'https://presencehq-sandbox.vercel.app/admin/login',
         handleCodeInApp: true,
-      };
-      await sendSignInLinkToEmail(auth, email, settings);
+      });
       window.localStorage.setItem('emailForSignIn', email);
       setStatus(`✅ Login link sent to ${email}`);
     } catch (err) {
@@ -66,15 +59,6 @@ export default function LoginPage() {
     }
   };
 
-  // ✅ Loading UI while Firebase initializes
-  if (loading)
-    return (
-      <p style={{ color: '#00ff99', textAlign: 'center', marginTop: '4rem' }}>
-        Authenticating...
-      </p>
-    );
-
-  // ✅ Login Form UI
   return (
     <div
       style={{
@@ -88,9 +72,7 @@ export default function LoginPage() {
         fontFamily: 'sans-serif',
       }}
     >
-      <h2 style={{ color: '#00ff99', marginBottom: '1rem' }}>
-        PresenceHQ Admin Login
-      </h2>
+      <h2 style={{ color: '#00ff99', marginBottom: '1rem' }}>PresenceHQ Admin Login</h2>
 
       <form
         onSubmit={handleSendLink}
@@ -121,7 +103,6 @@ export default function LoginPage() {
             color: '#fff',
           }}
         />
-
         <button
           type="submit"
           disabled={sending}
@@ -134,12 +115,10 @@ export default function LoginPage() {
             border: 'none',
             borderRadius: '8px',
             cursor: sending ? 'not-allowed' : 'pointer',
-            transition: 'background 0.3s ease',
           }}
         >
           {sending ? '⏳ Sending...' : 'Send Login Link'}
         </button>
-
         {status && (
           <p
             style={{
